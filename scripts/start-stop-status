@@ -11,7 +11,7 @@ log_root="${package_root}/var/log"
 
 apply_if_config()
 {
-  target_interface_name=$1
+  local target_interface_name=$1
   if [[ -v OVS_VLAN_ID ]]
   then
     ovs-vsctl set port $target_interface_name tag=$OVS_VLAN_ID
@@ -65,8 +65,9 @@ is_ovs_enable()
 
 set_ovs_interface()
 {
-  interface_name=$1
-  action=$2
+  local interface_name=$1
+  local action=$2
+  local config_file_ovs config_storage_location_ovs
 
   config_file_ovs=/etc/sysconfig/network-scripts/ifcfg-ovs_$interface_name
   config_storage_location_ovs=$package_root/etc/ifcfg-ovs_$interface_name
@@ -100,11 +101,14 @@ set_ovs_interface()
 
       if [ "$action" = "up" ]
       then
-        if [ -r "$config_file_ovs" ]
-        then
-          source $config_file_ovs
-        fi
-        apply_if_config ovs_$interface_name
+        (
+          unset BOOTPROTO IPADDR NETMASK OVS_VLAN_ID
+          if [ -r "$config_file_ovs" ]
+          then
+            source "$config_file_ovs"
+          fi
+          apply_if_config "ovs_$interface_name"
+        )
       fi
     fi
   fi
@@ -112,8 +116,10 @@ set_ovs_interface()
 
 set_interfaces()
 {
-  action=$1
-  target_interface_name=${2:-}
+  local action=$1
+  local target_interface_name=${2:-}
+  local all_interface_names interface_name driver_location
+  local config_file config_storage_location
   all_interface_names=$(ls /sys/class/net)
 
   if [ -n ${target_interface_name} ] && [ ! -e "/sys/class/net/${target_interface_name}" ] && [ "$action" = "down" ]
@@ -157,11 +163,14 @@ set_interfaces()
       set_ovs_interface $interface_name $action
       if [ "$action" = "up" ] && ! is_ovs_enable
       then
-        if [ -r "$config_file" ]
-        then
-          source $config_file
-        fi
-        apply_if_config $interface_name
+        (
+          unset BOOTPROTO IPADDR NETMASK OVS_VLAN_ID
+          if [ -r "$config_file" ]
+          then
+            source "$config_file"
+          fi
+          apply_if_config "$interface_name"
+        )
       fi
 
       if [ "$action" = "up" ] && [ -e ${script_root}/apply-private-flags ]
