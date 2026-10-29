@@ -1,0 +1,78 @@
+#!/bin/sh
+# Read-only snapshots for DS220j / RTD1296 USB Ethernet investigations.
+# Never change link settings, reset the adapter, or read network configuration.
+set -u
+usage() {
+    echo "Usage: $0 INTERFACE" >&2
+    echo "Take snapshots before and after a transfer using the USB interface name." >&2
+}
+[ "$#" -eq 1 ] || { usage; exit 2; }
+iface=$1
+case "$iface" in
+    ''|*[!a-zA-Z0-9_-]*) echo "Invalid interface name" >&2; exit 2 ;;
+esac
+net=/sys/class/net/$iface
+[ -d "$net" ] || { echo "Interface not found: $iface" >&2; exit 1; }
+driver=$(readlink -f "$net/device/driver") || {
+    echo "Cannot identify interface driver" >&2; exit 1;
+}
+[ "${driver##*/}" = r8152 ] || {
+    echo "Refusing non-r8152 interface: $iface" >&2; exit 1;
+}
+show_file() {
+    label=$1
+    file=$2
+    if [ -r "$file" ]; then
+        printf '%s: ' "$label"
+        cat "$file" 2>/dev/null || echo unavailable
+    else
+        printf '%s: unavailable\n' "$label"
+    fi
+}
+run_optional() {
+    if command -v "$1" >/dev/null 2>&1; then
+        "$@" 2>&1 || printf 'Command unavailable or unsupported: %s\n' "$*"
+    else
+        printf 'Missing optional tool: %s\n' "$1"
+    fi
+}
+printf 'r8152 diagnostic snapshot (read-only)\n'
+date -u
+printf 'Kernel: '
+uname -r
+show_file Model /proc/sys/kernel/syno_hw_version
+if [ -r /etc/VERSION ]; then
+    # Do not source a configuration file as shell code.
+    grep -E '^(majorversion|minorversion|micro|buildnumber|smallfixnumber)=' /etc/VERSION
+fi
+printf 'Interface: %s\nDriver: %s\n' "$iface" "$driver"
+show_file Driver-version /sys/module/r8152/version
+show_file Force-linear-TX /sys/module/r8152/parameters/force_linear_tx
+for field in operstate carrier speed duplex mtu; do
+    show_file "$field" "$net/$field"
+done
+show_file USB-scatter-gather "$net/rtl_adv/sg_en"
+device=$(readlink -f "$net/device") || device=
+if [ -n "$device" ]; then
+    printf 'USB interface path: %s\n' "$device"
+    usb=${device%/*}
+    for field in idVendor idProduct bcdDevice speed; do
+        show_file "USB-$field" "$usb/$field"
+    done
+    show_file USB-power-control "$usb/power/control"
+    show_file USB-runtime-status "$usb/power/runtime_status"
+fi
+for field in tx_bytes tx_packets tx_errors tx_dropped rx_bytes rx_packets rx_errors rx_dropped; do
+    show_file "$field" "$net/statistics/$field"
+done
+printf '\nDriver identity\n'
+run_optional ethtool -i "$iface"
+printf '\nNegotiated link\n'
+run_optional ethtool "$iface"
+printf '\nNetwork offloads (distinct from USB-scatter-gather above)\n'
+run_optional ethtool -k "$iface"
+printf '\nEEE\n'
+run_optional ethtool --show-eee "$iface"
+printf '\nHardware counters\n'
+run_optional ethtool -S "$iface"
+printf '\nKernel logs and IP/MAC/serial configuration are not collected.\n'
