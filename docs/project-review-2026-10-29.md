@@ -12,8 +12,9 @@ The proposed fix scopes helper variables locally and loads network configuration
 inside a subshell with those keys unset. Both ordinary and OVS configuration
 blocks receive that isolation. No failover or bonding behavior is added.
 
-Mocked regression tests reproduce the failures and check interface selection,
-static-to-DHCP transitions and Bash parsing. Real DSM and OVS behavior still need
+Four mocked regression/syntax checks passed and reproduced selector corruption
+and skipped interfaces on the original code. A fifth static-to-DHCP transition
+test was added afterward, but disk exhaustion prevented executing that final test. Real DSM and OVS behavior still need
 validation.
 
 ## Related projects and applicability
