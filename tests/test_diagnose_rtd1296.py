@@ -52,7 +52,8 @@ class CollectorTests(unittest.TestCase):
         self.assertIn("USB-scatter-gather: unavailable", result.stdout)
         calls = [line for line in result.stdout.splitlines() if line.startswith("MOCK ethtool")]
         self.assertEqual(calls, ["MOCK ethtool -i eth1", "MOCK ethtool eth1",
-                                "MOCK ethtool -k eth1", "MOCK ethtool --show-eee eth1",
+                                "MOCK ethtool -k eth1", "MOCK ethtool -T eth1",
+                                "MOCK ethtool --show-eee eth1",
                                 "MOCK ethtool -S eth1"])
     def test_missing_ethtool(self):
         mocks = MOCKS + '\ncommand() { return 1; }\n'
