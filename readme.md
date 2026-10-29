@@ -22,6 +22,12 @@ Even if there are no problems now, there is a possibility that malicious code wi
 
 If you have installed it, I strongly recommend resetting your Synology system partition.
 
+## DS220j / RTD1296 investigation
+
+This fork targets DSM 7.4 and RTL8156B adapters. Sustained 2.5 Gb/s operation
+on DS220j is not yet validated. See the [DS220j guide](docs/DS220j.md) for
+package selection, known limitations, upgrade recovery and testing.
+
 ## Supported NAS platform
 
 * DSM 7.x and 6.2
