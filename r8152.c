@@ -48,6 +48,14 @@
 #define DRIVER_DESC "Realtek RTL8152/RTL8153 Based USB Ethernet Adapters"
 #define MODULENAME "r8152"
 
+/* Experimental RTD1296 diagnostic: fixed for the lifetime of the module.
+ * Default behavior is unchanged; this is not a validated platform quirk.
+ */
+static bool force_linear_tx;
+module_param(force_linear_tx, bool, 0444);
+MODULE_PARM_DESC(force_linear_tx,
+		"Experimental: disable USB TX scatter-gather for all adapters (default false)");
+
 #define PATENTS		"This product is covered by one or more of the " \
 			"following patents:\n" \
 			"\t\tUS6,570,884, US6,115,776, and US6,327,625.\n"
@@ -33598,6 +33606,12 @@ static int rtl_hc_support_sg(struct usb_device *udev)
 	struct device *hc_dev;
 	struct pci_dev *pdev;
 	int ret = 0;
+
+	/* Both probe and rtl_adv/sg_en consult this function. Do not let a
+	 * later sysfs write re-enable SG during a force-linear experiment.
+	 */
+	if (force_linear_tx)
+		return -EOPNOTSUPP;
 
 	hc_dev = udev->bus ? udev->bus->controller : NULL;
 	if (!hc_dev) {
