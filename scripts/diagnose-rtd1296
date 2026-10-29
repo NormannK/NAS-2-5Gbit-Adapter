@@ -71,6 +71,8 @@ printf '\nNegotiated link\n'
 run_optional ethtool "$iface"
 printf '\nNetwork offloads (distinct from USB-scatter-gather above)\n'
 run_optional ethtool -k "$iface"
+printf '\nTimestamp capabilities\n'
+run_optional ethtool -T "$iface"
 printf '\nEEE\n'
 run_optional ethtool --show-eee "$iface"
 printf '\nHardware counters\n'
